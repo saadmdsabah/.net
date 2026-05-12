@@ -1298,3 +1298,206 @@ Order/PendingRestaurantOrders
   }
 </div>
 }
+
+ApplicationDbContext.cs
+ 
+using System;
+using System.Collections.Generic;
+using System.Text;
+using FastBite.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+ 
+namespace FastBite.Data
+{
+    public class ApplicationDbContext : IdentityDbContext
+    {
+        public ApplicationDbContext()
+        {
+        }
+ 
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
+         public DbSet<Category> Category{get;set;}
+        public DbSet<SubCategory> SubCategory{get;set;}
+         public DbSet<ApplicationUser> ApplicationUser{get;set;}
+         public DbSet<Restaurant> Restaurant{get;set;}
+         public DbSet<MenuItem> MenuItem{get;set;}
+        public DbSet<Category> Categories {get;set;}
+public DbSet<SubCategory> SubCategories {get;set;}
+public DbSet<Offer> Offers {get;set;}
+public DbSet<Restaurant> Restaurants {get;set;}
+public DbSet<MenuItem> MenuItems {get;set;}
+public DbSet<Cart> Carts {get;set;}
+public DbSet<CartItem> CartItems {get;set;}
+         public DbSet<CartItem> CartItem{get;set;}
+         public DbSet<Offer> Offer{get;set;}
+         public DbSet<Cart> Cart{get;set;}
+         public DbSet<OrderDetails> OrderDetails{get;set;}
+    }
+}
+-----------------------------------------------------------------
+ 
+Models
+ 
+//Cart.cs
+ 
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Collections.Generic;
+namespace FastBite.Models
+{
+    public class Cart
+    {
+        [Key]
+        public int Id{get;set;}
+        [Required]
+        public string userId{get;set;}
+ 
+        [ForeignKey("userId")]
+        public virtual ApplicationUser ApplicationUser{get;set;}
+        [Required]
+        public double AmountWithoutDiscount{get;set;}
+ 
+        [Required]
+        [Display(Name="Order Total")]
+        public double OrderTotal{get;set;}
+         [Display(Name="Offer Code")]
+        public string offercode{get;set;}
+ 
+        public double discount{get;set;}
+ 
+        public string orderStatus{get;set;}
+ 
+        public string Address{get;set;}
+ 
+        public string email{get;set;}
+        public string name{get;set;}
+        public string mobilenumber{get;set;}
+        public virtual ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
+    }
+}
+-----------------------------------------------------------
+CartItem.cs
+ 
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+ 
+namespace FastBite.Models
+{
+    // Models/CartItem.cs
+public class CartItem
+{
+    public CartItem() { Count = 1; }
+ 
+    public int  Id { get; set; }
+    public string ApplicationUserId { get; set; }
+ 
+    // remove [NotMapped]
+    [ForeignKey(nameof(ApplicationUserId))]
+    public virtual ApplicationUser ApplicationUser { get; set; }
+ 
+    public int MenuItemId { get; set; }
+ 
+    // remove [NotMapped]
+    [ForeignKey(nameof(MenuItemId))]
+    public virtual MenuItem MenuItem { get; set; }
+ 
+    [Range(1, int.MaxValue)]
+    public int Count { get; set; }
+}
+ 
+}
+------------------------------------------------------------
+MenuItem.cs
+ 
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+ 
+namespace FastBite.Models
+{
+    public class MenuItem
+    {
+        public int Id{get;set;}
+        public string Name{get;set;}
+        public string description{get;set;}
+ 
+        public string imageUrl{get;set;}
+    
+        [Display(Name="CategoryId")]
+        public int CategoryId{get;set;}
+        [Display(Name="SubCategoryId")]
+        public int SubCategoryId{get;set;}
+        [ForeignKey("CategoryId")]
+        [Display(Name="Category")]
+        public virtual Category Category{get;set;}
+         [ForeignKey("SubCategoryId")]
+         [Display(Name="SubCategory")]
+        public virtual SubCategory SubCategory{get;set;}
+        [Required]
+        public double price{get;set;}
+        [Display(Name="RestaurantId")]
+        public int RestaurantId{get;set;}
+        [ForeignKey("RestaurantId")]
+        [Display(Name="Restaurant")]
+        public virtual Restaurant Restaurant{get;set;}
+    }
+}
+---------------------------------------------------------------
+ 
+//OredrDetails.cs
+ 
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+ 
+namespace FastBite.Models
+{
+    public class OrderDetails
+    {
+        [Key]
+        public int Id{get;set;}
+        [Required]
+        public int OrderId{get;set;}
+        [ForeignKey("OrderId")]
+        public virtual Cart Cart{get;set;}
+        //public int Id { get; set; }
+public string orderStatus { get; set; }
+        public int MenuItemId{get;set;}
+        [ForeignKey("MenuItemId")]
+        public virtual MenuItem MenuItem{get;set;}
+ 
+        public int Count{get;set;}
+ 
+        public string Name{get;set;}
+        public string Description{get;set;}
+    }
+}
+ 
+---------------------------------------------------------
+Restaurant.cs
+ 
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Collections.Generic;
+namespace FastBite.Models
+{
+    public class Restaurant
+    {
+        [Key]
+        public int Id { get; set; }
+        [Required]
+        public string RestaurantName{get;set;}
+        [Required]
+        public string Address{get;set;}
+        public string imageurl{get;set;}
+        [Display(Name="OwenerID")]
+        public string OwenerID{get;set;}
+        [ForeignKey("OwenerID")]
+        public virtual ApplicationUser ApplicationUser{get;set;}
+        public ICollection<MenuItem> MenuItems { get; set; } = new List<MenuItem>();
+ 
+ 
+    }
+}
