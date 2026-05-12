@@ -1,0 +1,1300 @@
+===//Admin Area//====
+ 
+==CONTROLLER==
+ 
+//CategoryController
+ 
+/* CategoryController.cs */
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using FastBite.Data;
+using FastBite.Models;
+ 
+namespace FastBite.Areas.Admin.Controllers
+{
+    [Area("Admin")]
+    public class CategoryController : Controller
+    {
+        private readonly ApplicationDbContext _db;
+        public CategoryController(ApplicationDbContext db) => _db = db;
+ 
+        public async Task<IActionResult> Index() =>
+            View(await _db.Categories.AsNoTracking().ToListAsync());
+ 
+        public IActionResult Create() => View();
+ 
+        [HttpPost,ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Category obj)
+        {
+            if (!ModelState.IsValid) return View(obj);
+            _db.Categories.Add(obj); await _db.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+ 
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id==null) return NotFound();
+            var cat = await _db.Categories.FindAsync(id);
+if (cat == null)
+    return NotFound();
+return View(cat);
+        }
+ 
+        [HttpPost,ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, Category obj)
+        {
+            if (id!=obj.Id) return NotFound();
+            if (!ModelState.IsValid) return View(obj);
+            _db.Update(obj); await _db.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+       public async Task<IActionResult> Delete(int? id)
+{
+    if (id == null)
+        return NotFound();
+ 
+    var obj = await _db.Categories.FindAsync(id);
+    if (obj == null)
+        return NotFound();
+ 
+    return View(obj);
+}
+[HttpPost,ActionName("Delete"),ValidateAntiForgeryToken]
+public async Task<IActionResult> DeleteConfirmed(int id)
+{
+    var obj = await _db.Categories.FindAsync(id);
+    _db.Categories.Remove(obj);
+    await _db.SaveChangesAsync();
+    return RedirectToAction(nameof(Index));
+}
+ 
+    }
+}
+----------------------------------------------------
+ 
+//MenuItemController
+ 
+/* MenuItemController.cs */
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using FastBite.Data;
+using FastBite.Models;
+ 
+namespace FastBite.Areas.Admin.Controllers
+{
+    [Area("Admin")]
+    public class MenuItemController : Controller
+    {
+        private readonly ApplicationDbContext _db;
+        public MenuItemController(ApplicationDbContext db)=>_db=db;
+ 
+        public async Task<IActionResult> Index(int restId)
+        {
+            ViewBag.RestId = restId;
+            var list = await _db.MenuItems
+                        .Include(m=>m.Category)
+                        .Include(m=>m.SubCategory)
+                        .Where(m=>m.RestaurantId==restId)
+                        .ToListAsync();
+            return View(list);
+        }
+ 
+        public IActionResult Create(int restId)
+        {
+            ViewBag.RestId = restId;
+            ViewBag.Categories=new SelectList(_db.Categories,"Id","Name");
+            ViewBag.SubCategories=new SelectList(_db.SubCategories,"Id","Name");
+            return View(new MenuItem{RestaurantId=restId});
+        }
+ 
+        [HttpPost,ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(MenuItem item,int restId)
+        {
+            if(!ModelState.IsValid){
+                ViewBag.Categories=new SelectList(_db.Categories,"Id","Name");
+                ViewBag.SubCategories=new SelectList(_db.SubCategories,"Id","Name");
+                return View(item);
+            }
+            _db.MenuItems.Add(item); await _db.SaveChangesAsync();
+            return RedirectToAction(nameof(Index),new{restId=item.RestaurantId});
+        }
+       public async Task<IActionResult> Delete(int? id)
+{
+    if (id == null)
+        return NotFound();
+ 
+    var obj = await _db.MenuItems.FindAsync(id);
+    if (obj == null)
+        return NotFound();
+ 
+    return View(obj);
+}
+[HttpPost,ActionName("Delete"),ValidateAntiForgeryToken]
+public async Task<IActionResult> DeleteConfirmed(int id)
+{
+    var obj = await _db.MenuItems.FindAsync(id);
+    _db.MenuItems.Remove(obj);
+    await _db.SaveChangesAsync();
+    return RedirectToAction(nameof(Index));
+}
+ 
+    }
+}
+---------------------------------------------------------------
+ 
+//OfferController
+ 
+/* OfferController.cs */
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using FastBite.Data;
+using FastBite.Models;
+ 
+namespace FastBite.Areas.Admin.Controllers
+{
+    [Area("Admin")]
+    public class OfferController : Controller
+    {
+        private readonly ApplicationDbContext _db;
+        public OfferController(ApplicationDbContext db)=>_db=db;
+ 
+        public async Task<IActionResult> Index() =>
+            View(await _db.Offers.ToListAsync());
+ 
+        public IActionResult Create()=>View();
+ 
+        [HttpPost,ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Offer offer)
+        {
+            if(!ModelState.IsValid) return View(offer);
+            _db.Offers.Add(offer); await _db.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+       public async Task<IActionResult> Delete(int? id)
+{
+    if (id == null)
+        return NotFound();
+ 
+    var obj = await _db.Offers.FindAsync(id);
+    if (obj == null)
+        return NotFound();
+ 
+    return View(obj);
+}
+[HttpPost,ActionName("Delete"),ValidateAntiForgeryToken]
+public async Task<IActionResult> DeleteConfirmed(int id)
+{
+    var obj = await _db.Offers.FindAsync(id);
+    _db.Offers.Remove(obj);
+    await _db.SaveChangesAsync();
+    return RedirectToAction(nameof(Index));
+}
+ 
+    }
+}
+ 
+-----------------------------------------------------------------
+ 
+//RestaurantController
+ 
+/* RestaurantController.cs */
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using FastBite.Data;
+using FastBite.Models;
+using System.Security.Claims;
+ 
+namespace FastBite.Areas.Admin.Controllers
+{
+    [Area("Admin")]
+    public class RestaurantController : Controller
+    {
+        private readonly ApplicationDbContext _db;
+        public RestaurantController(ApplicationDbContext db)=>_db=db;
+ 
+        public async Task<IActionResult> Index()
+        {
+            var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var data = await _db.Restaurants.Where(r=>r.OwenerID==uid).ToListAsync();
+            return View(data);
+        }
+ 
+        public IActionResult Create()=>View();
+ 
+        [HttpPost,ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Restaurant rest)
+        {
+            rest.OwenerID = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if(!ModelState.IsValid) return View(rest);
+            _db.Restaurants.Add(rest); await _db.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+ 
+        /* link used by tests */
+        public async Task<IActionResult> MenuItems(int restId)=>
+            RedirectToAction("Index","MenuItem",new{area="Admin",restId});
+    
+     public async Task<IActionResult> Delete(int? id)
+{
+    if (id == null)
+        return NotFound();
+ 
+    var obj = await _db.Restaurants.FindAsync(id);
+    if (obj == null)
+        return NotFound();
+ 
+    return View(obj);
+}
+[HttpPost,ActionName("Delete"),ValidateAntiForgeryToken]
+public async Task<IActionResult> DeleteConfirmed(int id)
+{
+    var obj = await _db.Restaurants.FindAsync(id);
+    _db.Restaurants.Remove(obj);
+    await _db.SaveChangesAsync();
+    return RedirectToAction(nameof(Index));
+}
+}
+}
+--------------------------------------------------------------
+ 
+//SubCategoryController
+ 
+/* SubCategoryController.cs */
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using FastBite.Data;
+using FastBite.Models;
+using FastBite.Models.Viewmodels;
+ 
+namespace FastBite.Areas.Admin.Controllers
+{
+    [Area("Admin")]
+    public class SubCategoryController : Controller
+    {
+        private readonly ApplicationDbContext _db;
+        public SubCategoryController(ApplicationDbContext db)=>_db=db;
+ 
+        public async Task<IActionResult> Index() =>
+            View(await _db.SubCategories.Include(s=>s.category).ToListAsync());
+ 
+        public IActionResult Create()
+        {
+            ViewBag.ddCategoryList = new SelectList(_db.Categories,"Id","Name");
+            return View(new SubCategory());
+        }
+ 
+        [HttpPost,ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(SubCategory subCategory)
+        {
+            if(!ModelState.IsValid){
+                ViewBag.ddCategoryList=new SelectList(_db.Categories,"Id","Name");
+                return View(subCategory);
+            }
+            _db.SubCategories.Add(subCategory); await _db.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+ 
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if(id==null) return NotFound();
+            var sub=await _db.SubCategories.FindAsync(id);
+            if(sub==null) return NotFound();
+            ViewBag.ddCategoryList=new SelectList(_db.Categories,"Id","Name",sub.CategoryId);
+            return View(sub);
+        }
+ 
+        [HttpPost,ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id,SubCategory subCategory)
+        {
+            if(id!=subCategory.Id) return NotFound();
+            if(!ModelState.IsValid){
+                ViewBag.ddCategoryList=new SelectList(_db.Categories,"Id","Name");
+                return View(subCategory);
+            }
+            _db.SubCategories.Update(subCategory); await _db.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+       public async Task<IActionResult> Delete(int? id)
+{
+    if (id == null)
+        return NotFound();
+ 
+    var obj = await _db.SubCategories.FindAsync(id);
+    if (obj == null)
+        return NotFound();
+ 
+    return View(obj);
+}
+[HttpPost,ActionName("Delete"),ValidateAntiForgeryToken]
+public async Task<IActionResult> DeleteConfirmed(int id)
+{
+    var obj = await _db.SubCategories.FindAsync(id);
+    _db.SubCategories.Remove(obj);
+    await _db.SaveChangesAsync();
+    return RedirectToAction(nameof(Index));
+}
+ 
+    }
+}
+
+
+
+
+--------------------------------------------------------------
+//UserController
+ 
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using FastBite.Data;
+using FastBite.Models;
+using Microsoft.AspNetCore.Authorization;
+ 
+namespace FastBite.Areas.Admin.Controllers
+{
+    [Area("Admin"), Authorize(Roles = "ADMIN")]
+    public class UserController : Controller
+    {
+        private readonly ApplicationDbContext _db;
+        private readonly UserManager<ApplicationUser> _um;
+        public UserController(ApplicationDbContext db, UserManager<ApplicationUser> um)
+        {
+            _db = db; _um = um;
+        }
+ 
+        public async Task<IActionResult> Index() =>
+            View(await _db.Users.AsNoTracking().ToListAsync());
+ 
+        /* toggle lock / unlock ----------------------------- */
+        public async Task<IActionResult> LockUnlock(string id)
+        {
+            var user = await _um.FindByIdAsync(id);
+            if (user == null) return NotFound();
+ 
+            if (user.LockoutEnd != null && user.LockoutEnd > System.DateTime.Now)
+                user.LockoutEnd = System.DateTime.Now;              // unlock
+            else
+                user.LockoutEnd = System.DateTime.Now.AddYears(100); // lock
+ 
+            await _um.UpdateAsync(user);
+            return RedirectToAction(nameof(Index));
+        }
+    }
+}
+ 
+-----------------------------------------------------------------
+ 
+==Views==
+ 
+Category/create
+ 
+@model FastBite.Models.Category
+<form asp-action="Create" method="post">
+<input asp-for="Name" id="Name" />
+<input type="submit" value="Create" />
+</form>
+---------------------------------------
+ 
+Category/Delete
+ 
+@model FastBite.Models.Category
+<h3>Are you sure you want to delete @Model.Name?</h3>
+<form asp-action="Delete">
+<input type="hidden" asp-for="Id" />
+<input type="submit" value="Delete" /> |
+<a asp-action="Index">Back</a>
+</form>
+ 
+----------------------------------------
+ 
+Category/Edit
+ 
+@model FastBite.Models.Category
+<form asp-action="Edit" method="post">
+<input type="hidden" asp-for="Id" />
+<input asp-for="Name" id="Name" />
+<input type="submit" value="Update" />
+</form>
+-----------------------------------------
+ 
+Category/Index
+ 
+@model IEnumerable<FastBite.Models.Category>
+<a asp-action="Create">Create New</a>
+<table class="table">
+<thead></thead>
+<tbody>
+<tr><th>Name</th><th>Action</th></tr>
+@foreach (var item in Model)
+{
+   <tr>
+     <td>@item.Name</td>
+     <td>
+       <a asp-action="Edit" asp-route-id="@item.Id">Edit</a>|<a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
+     </td>
+   </tr>
+}
+</tbody>
+</table>
+----------------------------------------
+ 
+MenuItem/create
+@model FastBite.Models.MenuItem
+<form asp-action="Create" method="post">
+<input type="hidden" asp-for="RestaurantId" />
+<select asp-for="CategoryId" id="CategoryId" asp-items="ViewBag.Categories"></select>
+<select asp-for="SubCategoryId" id="SubCategoryId" asp-items="ViewBag.SubCategories"></select>
+<input asp-for="Name" id="MenuItem_Name" />
+<input asp-for="description" id="MenuItem_description" />
+<input asp-for="price" id="MenuItem_price" />
+<input type="submit" value="Create" />
+</form>
+-------------------------------------------
+MenuItem/Delete
+ 
+@model FastBite.Models.MenuItem
+ 
+<h3>Delete Menu Item: @Model.Name ?</h3>
+ 
+<form asp-action="Delete">
+    <input type="hidden" asp-for="Id" />
+    <input type="submit" value="Delete" class="btn btn-danger" />
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>
+--------------------------------------------
+ 
+MenuItem/Edit
+ 
+@model FastBite.Models.MenuItem
+ 
+<h2>Edit Menu Item</h2>
+ 
+<form asp-action="Edit">
+    <input type="hidden" asp-for="Id" />
+    <div class="form-group">
+        <label asp-for="Name"></label>
+        <input asp-for="Name" class="form-control" />
+    </div>
+    <input type="submit" value="Save" class="btn btn-primary" />
+</form>
+---------------------------------------------
+ 
+MenuItem/Index
+ 
+@model IEnumerable<FastBite.Models.MenuItem>
+@{
+    var restId = (int)ViewBag.RestId;
+}
+<a asp-action="Create" asp-route-restId="@restId">Create New</a>
+<table class="table">
+<thead><tr><th>Name</th></tr></thead>
+<tbody>
+@foreach (var m in Model)
+{
+  <tr><td>@m.Name</td></tr>
+}
+</tbody>
+</table>
+<a asp-action="Index" asp-controller="Restaurant" asp-route-area="Admin">Restaurants</a>
+----------------------------------------------
+ 
+Offer/Create
+ 
+@model FastBite.Models.Offer
+<form asp-action="Create" method="post">
+<input asp-for="Name" id="Name" />
+<select asp-for="CouponType" id="CouponType">
+   <option>Percent</option>
+   <option>Rupee</option>
+</select>
+<input asp-for="Discount" id="Discount" />
+<input asp-for="MinimumAmount" id="MinimumAmount" />
+<input asp-for="isActive" id="isActive" type="checkbox" />
+<input type="submit" value="Create" />
+</form>
+-------------------------------------------------
+Offer/Delete
+@model FastBite.Models.Offer
+ 
+<h3>Delete Offer: @Model.Name ?</h3>
+ 
+<form asp-action="Delete">
+    <input type="hidden" asp-for="Id" />
+    <input type="submit" value="Delete" class="btn btn-danger" />
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>
+-------------------------------------------------
+Offer/Edit
+ 
+@model FastBite.Models.Offer
+ 
+<h2>Edit Offer</h2>
+ 
+<form asp-action="Edit">
+    <input type="hidden" asp-for="Id" />
+    <div class="form-group">
+        <label asp-for="Name"></label>
+        <input asp-for="Name" class="form-control" />
+    </div>
+    <input type="submit" value="Save" class="btn btn-primary" />
+</form>
+ 
+----------------------------------------------------
+offer/Index
+ 
+@model IEnumerable<FastBite.Models.Offer>
+<a asp-action="Create">Create New</a>
+<table class="table">
+<thead></thead>
+<tbody>
+<tr><th>Name</th><th></th></tr>
+@foreach (var o in Model)
+{
+   <tr>
+    <td>@o.Name</td>
+   </tr>
+}
+</tbody>
+</table>
+--------------------------------------------------
+ 
+Restaurant/Create
+ 
+@model FastBite.Models.Restaurant
+<form asp-action="Create" method="post">
+<input asp-for="RestaurantName" id="RestaurantName" />
+<input asp-for="Address" id="Address" />
+<input type="submit" value="Create" />
+</form>
+ 
+--------------------------------------------------
+ 
+Restaurant/Delete
+ 
+@model FastBite.Models.Restaurant
+ 
+<h3>Delete Restaurant: @Model.RestaurantName ?</h3>
+ 
+<form asp-action="Delete">
+    <input type="hidden" asp-for="Id" />
+    <input type="submit" value="Delete" class="btn btn-danger" />
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>
+---------------------------------------------------
+Restaurant/Edit
+ 
+@model FastBite.Models.Restaurant
+ 
+<h2>Edit Restaurant</h2>
+ 
+<form asp-action="Edit">
+    <input type="hidden" asp-for="Id" />
+    <div class="form-group">
+        <label asp-for="RestaurantName"></label>
+        <input asp-for="RestaurantName" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label asp-for="Address"></label>
+        <input asp-for="Address" class="form-control" />
+    </div>
+    <input type="submit" value="Save" class="btn btn-primary" />
+</form>
+ 
+---------------------------------------------------
+ 
+Restaurant/Index
+ 
+@model IEnumerable<FastBite.Models.Restaurant>
+<a asp-action="Create">Create New</a>
+<table class="table">
+<thead></thead>
+<tbody>
+<tr><th>Name</th><th>Action</th></tr>
+@foreach (var r in Model)
+{
+  <tr>
+   <td>@r.RestaurantName</td>
+   <td>
+     <a asp-action="MenuItems" asp-route-restId="@r.Id">MenuItems</a>
+   </td>
+  </tr>
+}
+</tbody>
+</table>
+-----------------------------------------------------
+ 
+SubCategory/Create
+ 
+@model FastBite.Models.SubCategory
+<form asp-action="Create" method="post">
+<input asp-for="Name" id="subCategory_Name" />
+<select asp-for="CategoryId" id="ddCategoryList"
+         asp-items="ViewBag.ddCategoryList"></select>
+<input type="submit" value="Create" />
+</form>
+-----------------------------------------------------
+SubCategory/Delete
+ 
+@model SubCategory
+@{
+    ViewData["Title"] = "Edit";
+     Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<br/>
+<h2 class="text-info">Delete SubCategory</h2>
+<br/>
+ 
+------------------------------------------------------
+ 
+SubCategory/Edit
+ 
+@model FastBite.Models.SubCategory
+@{
+    ViewBag.Title = "Edit SubCategory";
+}
+<form asp-action="Edit" method="post">
+  <input type="hidden" asp-for="Id" />
+  <input asp-for="Name" id="subCategory_Name" />
+  <select asp-for="CategoryId" id="ddCategoryList" asp-items="ViewBag.ddCategoryList"></select>
+  <input type="submit" value="Update" />
+</form>
+ 
+-------------------------------------------------------
+ 
+SubCategory/Index
+ 
+@model IEnumerable<FastBite.Models.SubCategory>
+<a asp-action="Create">Create New</a>
+<table class="table">
+<thead></thead>
+<tbody>
+<tr><th>Name</th><th>Category</th><th>Action</th></tr>
+@foreach (var s in Model)
+{
+  <tr>
+   <td>@s.Name</td>
+   <td>@s.category?.Name</td>
+   <td><a asp-action="Edit" asp-route-id="@s.Id">Edit</a>|<a asp-action="Delete" asp-route-id="@s.Id">Delete</a></td>
+  </tr>
+}
+</tbody>
+</table>
+ 
+--------------------------------------------------------
+ 
+User/Index
+ 
+@model IEnumerable<FastBite.Models.ApplicationUser>
+<table class="table">
+<thead><tr><th>Email</th><th>Name</th><th></th></tr></thead>
+<tbody>
+@foreach (var u in Model)
+{
+  <tr>
+   <td>@u.Email</td>
+   <td>@u.Name</td>
+   <td>
+     <a asp-action="LockUnlock" asp-route-id="@u.Id">
+       @(u.LockoutEnd!=null && u.LockoutEnd > DateTime.Now ? "Unlock" : "Lock")
+     </a>
+   </td>
+  </tr>
+}
+</tbody>
+</table>
+
+
+====Customer===
+ 
+==Controller==
+ 
+//CartController
+ 
+/* CartController.cs (Customer area) */
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using FastBite.Data;
+using FastBite.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+ 
+namespace FastBite.Areas.Customer.Controllers
+{
+    [Area("Customer")]
+    public class CartController : Controller
+    {
+        private readonly ApplicationDbContext _db;
+        public CartController(ApplicationDbContext db)=>_db=db;
+        public IActionResult Index()
+{
+    return RedirectToAction(nameof(PlaceOrder));
+}
+        private async Task<Cart> GetCart()
+        {
+            var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var cart = await _db.Carts
+                     .Include(c=>c.ApplicationUser)
+                     .FirstOrDefaultAsync(c=>c.userId==uid && c.orderStatus==null);
+            if(cart==null){
+                cart=new Cart{userId=uid,OrderTotal=0,AmountWithoutDiscount=0};
+                _db.Carts.Add(cart); await _db.SaveChangesAsync();
+            }
+            return cart;
+        }
+ 
+        public async Task<IActionResult> PlaceOrder()
+        {
+            var cart = await GetCart();
+            var items = await _db.CartItems
+                        .Include(ci=>ci.MenuItem)
+                        .Where(ci=>ci.ApplicationUserId==cart.userId)
+                        .ToListAsync();
+ 
+            ViewBag.Items = items;
+            ViewBag.Total = cart.OrderTotal.ToString();
+            return View(cart);
+        }
+ 
+        [HttpPost]
+        public async Task<IActionResult> ApplyCoupon(string offercode)
+        {
+            var cart = await GetCart();
+            cart.offercode = offercode;
+            var offer = await _db.Offers.FirstOrDefaultAsync(o=>o.Name==offercode && o.isActive);
+            if(offer!=null && cart.AmountWithoutDiscount>=offer.MinimumAmount)
+            {
+                cart.discount = offer.Discount;
+                cart.OrderTotal = cart.AmountWithoutDiscount - offer.Discount;
+            }
+            await _db.SaveChangesAsync();
+            return RedirectToAction(nameof(PlaceOrder));
+        }
+ 
+        [HttpPost]
+        public async Task<IActionResult> FinalPlace()
+        {
+            var cart = await GetCart();
+            cart.orderStatus = "Order Placed and Pending Confirmation at Restaurant";
+            await _db.SaveChangesAsync();
+            return View("~/Views/Customer/Order/ConfirmOrder.cshtml", cart);
+        }
+        // …existing CartController code above …
+ 
+[HttpPost]
+public async Task<IActionResult> RemoveCoupon()
+{
+    var cart = await GetCart();
+    cart.offercode = null;
+    cart.discount  = 0;
+    cart.OrderTotal = cart.AmountWithoutDiscount;
+    await _db.SaveChangesAsync();
+    return RedirectToAction(nameof(PlaceOrder));
+}
+ 
+/* plus / minus buttons */
+public async Task<IActionResult> ChangeQty(int cartItemId, int delta)
+{
+    var item = await _db.CartItems.Include(ci=>ci.MenuItem).FirstOrDefaultAsync(ci=>ci.Id==cartItemId);
+    if(item!=null)
+    {
+        item.Count = System.Math.Max(1, item.Count + delta);
+        await _db.SaveChangesAsync();
+ 
+        /* recalc */
+var cart = await _db.Carts.FirstAsync(c => c.userId == item.ApplicationUserId && c.orderStatus == null);
+        var uid  = item.ApplicationUserId;
+        cart.AmountWithoutDiscount = await _db.CartItems
+            .Where(ci=>ci.ApplicationUserId==uid)
+            .SumAsync(ci=>ci.Count * ci.MenuItem.price);
+        cart.OrderTotal = cart.AmountWithoutDiscount - cart.discount;
+        await _db.SaveChangesAsync();
+    }
+    return RedirectToAction("PlaceOrder");
+}
+ 
+    }
+}
+--------------------------------------------------------------------------------
+ 
+//CartItemController
+ 
+/* CartItemController.cs (Customer area) */
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using FastBite.Data;
+using FastBite.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+ 
+namespace FastBite.Areas.Customer.Controllers
+{
+    [Area("Customer")]
+    public class CartItemController : Controller
+    {
+        private readonly ApplicationDbContext _db;
+        public CartItemController(ApplicationDbContext db)=>_db=db;
+ 
+        public async Task<IActionResult> Add(int menuItemId)
+        {
+            var mi = await _db.MenuItems.FindAsync(menuItemId);
+            if(mi==null) return NotFound();
+            return View(mi);                       // page with Count box
+        }
+public async Task<IActionResult> AddToCart(int menuItemId, int Count)
+{
+var uid = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+if (string.IsNullOrEmpty(uid))
+return RedirectToAction("Index", "Home", new { area = "Customer" });
+ 
+var cart = await _db.Carts.FirstOrDefaultAsync(c => c.userId == uid && c.orderStatus == null);
+if (cart == null)
+{
+cart = new Cart { userId = uid };
+_db.Carts.Add(cart);
+await _db.SaveChangesAsync();
+}
+ 
+var menu = await _db.MenuItems.Include(m => m.Restaurant).FirstOrDefaultAsync(m => m.Id == menuItemId);
+if (menu == null)
+{
+// MenuItem not found, skip logic to prevent crash
+return RedirectToAction("Index", "Home", new { area = "Customer" });
+}
+ 
+var firstItem = await _db.CartItems.Include(ci => ci.MenuItem)
+.FirstOrDefaultAsync(ci => ci.ApplicationUserId == uid);
+ 
+if (firstItem != null && firstItem.MenuItem != null && firstItem.MenuItem.RestaurantId != menu.RestaurantId)
+{
+_db.CartItems.RemoveRange(_db.CartItems.Where(ci => ci.ApplicationUserId == uid));
+cart.AmountWithoutDiscount = cart.OrderTotal = 0;
+}
+ 
+var existing = await _db.CartItems
+.FirstOrDefaultAsync(ci => ci.ApplicationUserId == uid && ci.MenuItemId == menuItemId);
+if (existing == null)
+{
+existing = new CartItem
+{
+ApplicationUserId = uid,
+MenuItemId = menuItemId,
+Count = Count
+};
+_db.CartItems.Add(existing);
+}
+else
+{
+existing.Count += Count;
+}
+ 
+await _db.SaveChangesAsync();
+ 
+// Safely calculate totals
+var cartItems = await _db.CartItems
+.Include(ci => ci.MenuItem)
+.Where(ci => ci.ApplicationUserId == uid)
+.ToListAsync();
+ 
+cart.AmountWithoutDiscount = cartItems.Sum(ci => ci.Count * (ci.MenuItem?.price ?? 0));
+cart.OrderTotal = cart.AmountWithoutDiscount - cart.discount;
+await _db.SaveChangesAsync();
+ 
+return RedirectToAction("MenuItem", "CartItem", new { area = "Customer", menuItemId = menuItemId, count = Count });
+}
+[HttpGet]
+public async Task<IActionResult> MenuItem(int menuItemId, int count)
+{
+var menuItem = await _db.MenuItems.Include(m => m.Restaurant).FirstOrDefaultAsync(m => m.Id == menuItemId);
+if (menuItem == null)
+return NotFound();
+ 
+ViewBag.Count = count;
+return View(menuItem);
+}
+ 
+ 
+}
+}
+
+//HomeController
+ 
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using FastBite.Models;
+using FastBite.Data;
+using Microsoft.EntityFrameworkCore;
+using FastBite.Models.ViewModel;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+ 
+namespace FastBite.Controllers
+{
+    [Area("Customer")]
+    public class HomeController : Controller
+{
+    private readonly ApplicationDbContext _db;
+    public HomeController(ApplicationDbContext db)=>_db=db;
+ 
+    public IActionResult Index() => View();
+ 
+    // public IActionResult Menu(int restId)
+    // {
+    //     var list=_db.MenuItems.Where(m=>m.RestaurantId==restId).ToList();
+    //     ViewBag.RestId=restId;
+    //     return View(list);
+    // }
+    public IActionResult Menu(int restId)
+    {
+        var restaurant = _db.Restaurants.Include(r => r.MenuItems).FirstOrDefault(r => r.Id == restId);
+        if (restaurant == null)
+        {
+            return NotFound();
+        }
+        return View(restaurant);
+    }
+}
+ 
+}
+----------------------------------------------------------------------------
+ 
+/OrderController
+ 
+/* OrderController.cs (Customer area) */
+using System.Linq;
+using System.Threading.Tasks;
+using FastBite.Data;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+ 
+namespace FastBite.Areas.Customer.Controllers
+{
+    [Area("Customer")]
+    public class OrderController : Controller
+    {
+        private readonly ApplicationDbContext _db;
+        public OrderController(ApplicationDbContext db)=>_db=db;
+ 
+        public async Task<IActionResult> OrderHistory()
+        {
+            var list = await _db.Carts
+                        .Where(c=>c.orderStatus!=null)
+                        .ToListAsync();
+            return View(list);     // cards with class="card"
+        }
+ 
+        public async Task<IActionResult> PendingRestaurantOrderDetails(int restId)
+        {
+            var carts = await _db.Carts
+                        .Include(c=>c.ApplicationUser)
+                        .Include(c=>c.CartItems)
+                        .ThenInclude(ci=>ci.MenuItem)
+                        .Where(c=>c.CartItems.Any(ci=>ci.MenuItem.RestaurantId==restId)
+                               && (c.orderStatus=="Order Placed and Pending Confirmation at Restaurant"
+                                   || c.orderStatus=="Order Approved and Food is being Prepared"))
+                        .ToListAsync();
+            ViewBag.RestId = restId;
+            return View(carts);
+        }
+ 
+        /* links clicked in the view */
+        public async Task<IActionResult> AcceptOrder(int id,int restId)
+        {
+            var cart=await _db.Carts.FindAsync(id);
+            cart.orderStatus="Order Approved and Food is being Prepared";
+            await _db.SaveChangesAsync();
+            return RedirectToAction(nameof(PendingRestaurantOrderDetails),new{restId});
+        }
+        public async Task<IActionResult> Prepared(int id,int restId)
+        {
+            var c=await _db.Carts.FindAsync(id);
+            c.orderStatus="Order Ready for Pickup";
+            await _db.SaveChangesAsync();
+            return RedirectToAction(nameof(PendingRestaurantOrderDetails),new{restId});
+        }
+        public async Task<IActionResult> Cancel(int id,int restId)
+        {
+            var c=await _db.Carts.FindAsync(id);
+            c.orderStatus="Order Cancelled";
+            await _db.SaveChangesAsync();
+            return RedirectToAction(nameof(PendingRestaurantOrderDetails),new{restId});
+        }
+    }
+}
+--------------------------------------------
+==Views==
+ 
+Cart/PlaceOrder
+ 
+@{
+    var items = (System.Collections.Generic.List<FastBite.Models.CartItem>)ViewBag.Items;
+}
+<h2>Cart</h2>
+ 
+@foreach (var item in items)
+{
+<div>
+  @item.MenuItem.Name  x  @item.Count
+  <a id="Add"
+     asp-action="ChangeQty" asp-controller="Cart" asp-route-cartItemId="@item.Id" asp-route-delta="1">+</a>
+  <a id="minus"
+     asp-action="ChangeQty" asp-controller="Cart" asp-route-cartItemId="@item.Id" asp-route-delta="-1">-</a>
+</div>
+}
+<p id="Total">@ViewBag.Total</p>
+ 
+<form asp-action="ApplyCoupon" method="post">
+<input id="offercode"   name="offercode" />
+<button id="applycoupon" type="submit">Apply</button>
+</form>
+ 
+<form asp-action="RemoveCoupon" method="post">
+<button id="removecoupon" type="submit">Remove</button>
+</form>
+ 
+<form asp-action="FinalPlace" method="post">
+<button id="placeorder" type="submit">PlaceOrder</button>
+</form>
+--------------------------------------------------------
+CartItem/AddToCart
+@model FastBite.Models.MenuItem
+<form asp-action="AddToCart" method="post">
+<input type="hidden" name="menuItemId" value="@Model.Id" />
+<input id="Count" name="Count" value="1" />
+<button type="submit">AddToCart</button>
+</form>
+
+
+CartIntem/MenuItem
+@model FastBite.Models.MenuItem
+@{
+    ViewData["Title"] = "Menu Item Details";
+    var count = ViewBag.Count as int? ?? 1;
+}
+ 
+<h2>@Model.Name</h2>
+<p>@Model.description</p>
+<p>Price: ₹@Model.price</p>
+<p>Restaurant: @Model.Restaurant.RestaurantName</p>
+ 
+<form asp-action="AddToCart" asp-controller="CartItem" asp-area="Customer" method="get">
+    <input type="hidden" name="menuItemId" value="@Model.Id" />
+    <div>
+        <button type="submit" name="Count" value="@(count - 1 <= 0 ? 1 : count - 1)">-</button>
+        <span>@count</span>
+        <button type="submit" name="Count" value="@(count + 1)">+</button>
+    </div>
+</form>
+ 
+<a asp-action="Index" asp-controller="Cart" asp-area="Customer" class="btn btn-primary mt-3">Go to Cart</a>
+-------------------------------------------------------------
+Home/Index
+ 
+@inject FastBite.Data.ApplicationDbContext db
+@using System.Security.Claims
+ 
+@{
+    string uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    int cartCount = uid == null ? 0 : db.CartItems.Count(ci => ci.ApplicationUserId == uid);
+}
+ 
+<h1>
+    <a asp-action="Index" asp-controller="Home">FastBite</a>
+</h1>
+ 
+<a href="/Customer/Cart/PlaceOrder">Cart(@cartCount)</a> |
+<a asp-action="OrderHistory" asp-controller="Order">Order History</a>
+ 
+<hr />
+ 
+@foreach (var r in db.Restaurants)
+{
+    <div>
+        <h4>@r.RestaurantName</h4>
+        <p><strong>Location:</strong> @r.Address</p>
+        <a asp-action="Menu" asp-controller="Home" asp-route-restId="@r.Id" class="btn btn-primary">
+            Order Now
+        </a>
+    </div>
+}
+------------------------------------------------------------
+Home/Menu
+ 
+@model FastBite.Models.Restaurant
+ 
+@{
+    ViewData["Title"] = "Menu - " + Model.RestaurantName;
+}
+ 
+<h2 class="text-center mb-4">Menu at @Model.RestaurantName</h2>
+ 
+@if (Model.MenuItems == null || !Model.MenuItems.Any())
+{
+    <p class="text-center text-muted">No items available for this restaurant.</p>
+}
+else
+{
+    <div class="row">
+        @foreach (var item in Model.MenuItems)
+        {
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm">
+                   
+                    <div class="card-body">
+                        <h5 class="card-title">@item.Name</h5>
+                        <p class="card-text">@item.description</p>
+                        <p class="card-text"><strong>Price:</strong> ₹@item.price</p>
+ 
+                        <!-- This is the button test cases are looking for -->
+                        <a asp-controller="CartItem" asp-action="AddToCart" asp-route-id="@item.Id" class="btn btn-success">
+                            Add To Cart
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+------------------------------------------------------------
+Home/MenuItem
+ 
+@model FastBite.Models.Restaurant
+ 
+@{
+    ViewData["Title"] = "Menu - " + Model.RestaurantName;
+}
+ 
+<h2 class="text-center mb-4">Menu at @Model.RestaurantName</h2>
+ 
+@if (Model.MenuItems == null || !Model.MenuItems.Any())
+{
+    <p class="text-center text-muted">No items available for this restaurant.</p>
+}
+else
+{
+    <div class="row">
+        @foreach (var item in Model.MenuItems)
+        {
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm">
+                   
+                    <div class="card-body">
+                        <h5 class="card-title">@item.Name</h5>
+                        <p class="card-text">@item.description</p>
+                        <p class="card-text"><strong>Price:</strong> ₹@item.price</p>
+ 
+                        <!-- This is the button test cases are looking for -->
+                        <a asp-controller="Cart" asp-action="AddToCart" asp-route-id="@item.Id" class="btn btn-success">
+                            Add To Cart
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+-------------------------------------------------------------
+Order/ConfirmOrder
+ 
+@{
+    ViewData["Title"] = "Order Confirmation";
+    var items = (List<FastBite.Models.CartItem>)ViewBag.Items;
+    var total = ViewBag.Total;
+    var status = Model.orderStatus;
+}
+ 
+<h2>Order Confirmed</h2>
+ 
+<p id="orderstatus">Order Status: @status</p>
+ 
+<h3>Items Ordered</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Item</th>
+            <th>Count</th>
+            <th>Unit Price</th>
+            <th>Subtotal</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in items)
+        {
+            <tr>
+                <td>@item.MenuItem.Name</td>
+                <td>@item.Count</td>
+                <td>@item.MenuItem.price</td>
+                <td>@(item.Count * item.MenuItem.price)</td>
+            </tr>
+        }
+    </tbody>
+</table>
+ 
+<p><strong>Total:</strong> <span id="order-total">@total</span></p>
+----------------------------------------------------------
+Order/MyOrders
+ 
+@model IEnumerable<FastBite.Models.ViewModel.OrderViewModel>
+@using FastBite.Utility
+@{
+    ViewData["Title"] = "MyOrders";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+ 
+}
+ 
+ 
+<div class =" row">
+</div>
+  
+------------------------------------------------------------
+ 
+Order/OrderHistory
+ 
+@model IEnumerable<FastBite.Models.Cart>
+<h2>OrderHistory</h2>
+@foreach (var c in Model)
+{
+<div class="card">
+   <p class="orderstatus">@c.orderStatus</p>
+</div>
+}
+-------------------------------------------------------------
+ 
+Order/PendingRestaurantOrders
+ 
+@model IEnumerable<FastBite.Models.Cart>
+@{
+    int restId = (int)ViewBag.RestId;
+}
+@foreach (var o in Model)
+{
+<div>
+  <p>Order #@o.Id</p>
+  @if(o.orderStatus=="Order Placed and Pending Confirmation at Restaurant"){
+      <a asp-action="AcceptOrder" asp-route-id="@o.Id" asp-route-restId="@restId">Accept Order</a>
+      <a asp-action="Cancel" asp-route-id="@o.Id" asp-route-restId="@restId">Cancel Order</a>
+  }else if(o.orderStatus=="Order Approved and Food is being Prepared"){
+      <a asp-action="Prepared" asp-route-id="@o.Id" asp-route-restId="@restId">Order Prepared</a>
+      <a asp-action="Cancel" asp-route-id="@o.Id" asp-route-restId="@restId">Cancel Order</a>
+  }
+</div>
+}
